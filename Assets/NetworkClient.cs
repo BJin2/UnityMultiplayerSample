@@ -1,16 +1,28 @@
-﻿using UnityEngine;
-
+﻿using System.Text;
+using UnityEngine;
 using Unity.Collections;
 using Unity.Networking.Transport;
+using NetworkData;
 
 public class NetworkClient : MonoBehaviour
 {
+    public static NetworkClient instance { get; private set; }
+
     public UdpNetworkDriver m_Driver;
     public NetworkConnection m_Connection;
     public bool m_Done;
 
-    void Start ()
+    private void Awake()
     {
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Destroy(this);
+        }
+
         m_Driver = new UdpNetworkDriver(new INetworkParameter[0]);
         m_Connection = default(NetworkConnection);
 
@@ -24,7 +36,7 @@ public class NetworkClient : MonoBehaviour
         m_Driver.Dispose();
     }
 
-    void Update()
+    private void Update()
     {
         m_Driver.ScheduleUpdate().Complete();
 
@@ -37,7 +49,7 @@ public class NetworkClient : MonoBehaviour
 
         DataStreamReader stream;
         NetworkEvent.Type cmd;
-
+        
         while ((cmd = m_Connection.PopEvent(m_Driver, out stream)) !=
                NetworkEvent.Type.Empty)
         {
@@ -55,8 +67,12 @@ public class NetworkClient : MonoBehaviour
             else if (cmd == NetworkEvent.Type.Data)
             {
                 var readerCtx = default(DataStreamReader.Context);
-                uint value = stream.ReadUInt(ref readerCtx);
-                Debug.Log("Got the value = " + value + " back from the server");
+
+                byte[] message = stream.ReadBytesAsArray(ref readerCtx, stream.Length);
+                string returnData = Encoding.ASCII.GetString(message);
+
+                Debug.Log("Got this: " + returnData);
+
                 m_Done = true;
                 m_Connection.Disconnect(m_Driver);
                 m_Connection = default(NetworkConnection);
@@ -67,5 +83,9 @@ public class NetworkClient : MonoBehaviour
                 m_Connection = default(NetworkConnection);
             }
         }
+    }
+    public void SendTransform(Transform t, string id, Vector3 translateInput, Vector3 rotateAxis)
+    {
+
     }
 }

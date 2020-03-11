@@ -1,16 +1,26 @@
-﻿using UnityEngine;
+﻿using System.Text;
+using UnityEngine;
 using UnityEngine.Assertions;
-
 using Unity.Collections;
 using Unity.Networking.Transport;
 
 public class NetworkServer : MonoBehaviour
 {
+    public static NetworkServer instance { get; private set; }
     public UdpNetworkDriver m_Driver;
     private NativeList<NetworkConnection> m_Connections;
 
-    void Start ()
+    private void Awake()
     {
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Destroy(this);
+        }
+
         m_Driver = new UdpNetworkDriver(new INetworkParameter[0]);
         var endpoint = NetworkEndPoint.AnyIpv4;
         endpoint.Port = 12345;
@@ -28,7 +38,7 @@ public class NetworkServer : MonoBehaviour
         m_Connections.Dispose();
     }
 
-    void Update ()
+    private void Update ()
     {
         m_Driver.ScheduleUpdate().Complete();
 
@@ -64,12 +74,15 @@ public class NetworkServer : MonoBehaviour
                     var readerCtx = default(DataStreamReader.Context);
                     uint number = stream.ReadUInt(ref readerCtx);
 
-                    Debug.Log("Got " + number + " from the Client adding + 2 to it.");
-                    number +=2;
+                    Debug.Log("Got " + number + " from the Client adding + 20 to it.");
+                    number +=20;
 
                     using (var writer = new DataStreamWriter(4, Allocator.Temp))
                     {
-                        writer.Write(number);
+                        byte[] sendBytes = Encoding.ASCII.GetBytes(number.ToString());
+                        Debug.Log("Number string : " + number.ToString());
+                        Debug.Log("Bytes : " + sendBytes);
+                        writer.Write(sendBytes, sendBytes.Length);
                         m_Driver.Send(NetworkPipeline.Null, m_Connections[i], writer);
                     }
                 }
