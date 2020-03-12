@@ -73,6 +73,56 @@ public class NetworkClient : MonoBehaviour
 
                 Debug.Log("Got this: " + returnData);
 
+                State latestState = JsonUtility.FromJson<State>(returnData);
+
+                try
+                {
+                    switch (latestState.cmd)
+                    {
+                        case Commands.NEW_CLIENT:
+                        {
+                            Debug.Log("New client");
+                            NewPlayer np = JsonUtility.FromJson<NewPlayer>(returnData);
+                            SpawnPlayers(np.player);
+                            break;
+                        }
+                        case Commands.UPDATE:
+                        {
+                            UpdatedPlayer up = JsonUtility.FromJson<UpdatedPlayer>(returnData);
+                            SpawnPlayers(up.update);
+                            break;
+                        }
+                        case Commands.CLIENT_DROPPED:
+                        {
+                            DisconnectedPlayer dp = JsonUtility.FromJson<DisconnectedPlayer>(returnData);
+                            SpawnPlayers(dp.disconnect);
+                            Debug.Log("Client dropped");
+                            break;
+                        }
+                        case Commands.CLIENT_LIST:
+                        {
+                            ConnectedPlayer cp = JsonUtility.FromJson<ConnectedPlayer>(returnData);
+                            SpawnPlayers(cp.connect);
+                            Debug.Log("Client list");
+                            break;
+                        }
+                        case Commands.OWN_ID:
+                        {
+                            Player p = JsonUtility.FromJson<Player>(returnData);
+                            SpawnPlayers(p);
+                            Debug.Log("Player's own id");
+                            break;
+                        }
+                        default:
+                            Debug.Log("Error");
+                            break;
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.Log(e.ToString());
+                }
+
                 m_Done = true;
                 m_Connection.Disconnect(m_Driver);
                 m_Connection = default(NetworkConnection);
@@ -82,6 +132,32 @@ public class NetworkClient : MonoBehaviour
                 Debug.Log("Client got disconnected from server");
                 m_Connection = default(NetworkConnection);
             }
+        }
+    }
+
+    private void SpawnPlayers(Player p)
+    {
+
+    }
+    private void SpawnPlayers(Player[] p)
+    {
+        foreach (Player player in p)
+        {
+
+        }
+    }
+    private void UpdatePlayers(Player[] p)
+    {
+        foreach (Player player in p)
+        {
+
+        }
+    }
+    private void DestroyPlayers(Player[] p)
+    {
+        foreach (Player player in p)
+        {
+
         }
     }
     public void SendTransform(Transform t, string id, Vector3 translateInput, Vector3 rotateAxis)
