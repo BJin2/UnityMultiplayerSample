@@ -8,8 +8,11 @@ public class NetworkClient : MonoBehaviour
 {
     public static NetworkClient instance { get; private set; }
 
+    public GameObject cube;
+
     public UdpNetworkDriver m_Driver;
     public NetworkConnection m_Connection;
+
     public bool m_Done;
 
     private void Awake()
