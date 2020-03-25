@@ -72,11 +72,14 @@ public class NetworkServer : MonoBehaviour
         NewPlayer new_player = new NewPlayer(new_client);
         foreach (Client client in clients)
         {
+            Debug.Log("Sending new client to connected clients");
             SendData(new_player, client);
         }
 
         new_player.cmd = Commands.OWN_ID;
+        Debug.Log("Sending own id");
         SendData(new_player, new_client);
+        Debug.Log("Sending client list to new client");
         SendData(new ConnectedPlayer(clients), new_client);
 
         clients.Add(new_client);
@@ -177,13 +180,17 @@ public class NetworkServer : MonoBehaviour
                     m_Connections[i] = default(NetworkConnection);
                     continue;
                 }
+
+                cmd = m_Driver.PopEventForConnection(m_Connections[i], out stream);
             }
         }
     }
 
     private void SendData(object data, NetworkConnection c)
     {
+        Debug.Log("SendData through first version");
         var writer = m_Driver.BeginSend(NetworkPipeline.Null, c);
+        Debug.Log("Writer : "+writer);
         string jsonString = JsonUtility.ToJson(data);
         NativeArray<byte> sendBytes = new NativeArray<byte>(Encoding.ASCII.GetBytes(jsonString), Allocator.Temp);
         writer.WriteBytes(sendBytes);
@@ -191,10 +198,12 @@ public class NetworkServer : MonoBehaviour
     }
     private void SendData(object data, int connectionIndex)
     {
+        Debug.Log("SendData through second version");
         SendData(data, m_Connections[connectionIndex]);
     }
     private void SendData(object data, Client client)
     {
+        Debug.Log("SendData through third version");
         SendData(data, FindMatchingConnection(client.id));
     }
 

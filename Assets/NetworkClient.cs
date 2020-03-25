@@ -16,6 +16,7 @@ public class NetworkClient : MonoBehaviour
     public NetworkDriver m_Driver;
     public NetworkConnection m_Connection;
 
+    public string myID { get; private set; }
     private Dictionary<string, GameObject> players;
 
     private void Awake()
@@ -45,19 +46,86 @@ public class NetworkClient : MonoBehaviour
 
     private void OnConnect()
     {
-
+        Debug.Log("Connected to the server.");
     }
-    private void OnData()
+    private void OnData(DataStreamReader stream)
     {
+        NativeArray<byte> message = new NativeArray<byte>(stream.Length, Allocator.Temp);
+        stream.ReadBytes(message);
+        string returnData = Encoding.ASCII.GetString(message.ToArray());
 
+        NetworkHeader header = new NetworkHeader();
+        try
+        {
+            header = JsonUtility.FromJson<NetworkHeader>(returnData);
+        }
+        catch (System.ArgumentException e)
+        {
+            Debug.LogError(e.ToString() + "\nHeader loading failed. Disconnect");
+            Disconnect();
+            return;
+        }
+
+        try
+        {
+            switch (header.cmd)
+            {
+                case Commands.NEW_CLIENT:
+                {
+                    Debug.Log("New client");
+                    NewPlayer np = JsonUtility.FromJson<NewPlayer>(returnData);
+                    SpawnPlayers(np.player);
+                    break;
+                }
+                case Commands.UPDATE:
+                {
+                    UpdatedPlayer up = JsonUtility.FromJson<UpdatedPlayer>(returnData);
+                    UpdatePlayers(up.update);
+                    break;
+                }
+                case Commands.CLIENT_DROPPED:
+                {
+                    DisconnectedPlayer dp = JsonUtility.FromJson<DisconnectedPlayer>(returnData);
+                    DestroyPlayers(dp.disconnect);
+                    Debug.Log("Client dropped");
+                    break;
+                }
+                case Commands.CLIENT_LIST:
+                {
+                    ConnectedPlayer cp = JsonUtility.FromJson<ConnectedPlayer>(returnData);
+                    SpawnPlayers(cp.connect);
+                    Debug.Log("Client list");
+                    break;
+                }
+                case Commands.OWN_ID:
+                {
+                    Player p = JsonUtility.FromJson<Player>(returnData);
+                    myID = p.id;
+                    SpawnPlayers(p);
+                    Debug.Log("Player's own id");
+                    break;
+                }
+                default:
+                    Debug.Log("Error");
+                    break;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError(e.ToString() + "\nMessage contents loading failed. Disconnect");
+            Disconnect();
+            return;
+        }
     }
     private void Disconnect()
     {
-
+        Debug.Log("Disconnecting");
+        m_Connection.Disconnect(m_Driver);
     }
     private void OnDisconnect()
     {
-
+        Debug.Log("Client got disconnected from server");
+        m_Connection = default(NetworkConnection);
     }
 
     private void Update()
@@ -66,119 +134,42 @@ public class NetworkClient : MonoBehaviour
 
         if (!m_Connection.IsCreated)
         {
-            if (!m_Done)
-                Debug.Log("Something went wrong during connect");
+            Debug.Log("Connection Error");
             return;
         }
 
         DataStreamReader stream;
         NetworkEvent.Type cmd;
         
-        while ((cmd = m_Connection.PopEvent(m_Driver, out stream)) !=
-               NetworkEvent.Type.Empty)
+        while ((cmd = m_Connection.PopEvent(m_Driver, out stream)) != NetworkEvent.Type.Empty)
         {
             if (cmd == NetworkEvent.Type.Connect)
             {
-                Debug.Log("We are now connected to the server");
-
-                var value = 1;
-                using (var writer = new DataStreamWriter(4, Allocator.Temp))
-                {
-                    writer.Write(value);
-                    m_Connection.Send(m_Driver, writer);
-                }
+                OnConnect();
             }
             else if (cmd == NetworkEvent.Type.Data)
             {
-                var readerCtx = default(DataStreamReader.Context);
-
-                byte[] message = stream.ReadBytesAsArray(ref readerCtx, stream.Length);
-                string returnData = Encoding.ASCII.GetString(message);
-
-                Debug.Log("Got this: " + returnData);
-                NetworkHeader latestState = new NetworkHeader();
-                try
-                {
-                    latestState = JsonUtility.FromJson<NetworkHeader>(returnData);
-                }
-                catch(System.ArgumentException e)
-                {
-                    Debug.LogError(e.ToString() + "\nLoading failed. Disconnect");
-                    m_Done = true;
-                    m_Connection.Disconnect(m_Driver);
-                    m_Connection = default(NetworkConnection);
-                    return;
-                }
-
-                try
-                {
-                    switch (latestState.cmd)
-                    {
-                        case Commands.NEW_CLIENT:
-                        {
-                            Debug.Log("New client");
-                            NewPlayer np = JsonUtility.FromJson<NewPlayer>(returnData);
-                            SpawnPlayers(np.player);
-                            break;
-                        }
-                        case Commands.UPDATE:
-                        {
-                            UpdatedPlayer up = JsonUtility.FromJson<UpdatedPlayer>(returnData);
-                            SpawnPlayers(up.update);
-                            break;
-                        }
-                        case Commands.CLIENT_DROPPED:
-                        {
-                            DisconnectedPlayer dp = JsonUtility.FromJson<DisconnectedPlayer>(returnData);
-                            SpawnPlayers(dp.disconnect);
-                            Debug.Log("Client dropped");
-                            break;
-                        }
-                        case Commands.CLIENT_LIST:
-                        {
-                            ConnectedPlayer cp = JsonUtility.FromJson<ConnectedPlayer>(returnData);
-                            SpawnPlayers(cp.connect);
-                            Debug.Log("Client list");
-                            break;
-                        }
-                        case Commands.OWN_ID:
-                        {
-                            Player p = JsonUtility.FromJson<Player>(returnData);
-                            SpawnPlayers(p);
-                            Debug.Log("Player's own id");
-                            break;
-                        }
-                        default:
-                            Debug.Log("Error");
-                            break;
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    Debug.Log(e.ToString());
-                }
-
-                m_Done = true;
-                m_Connection.Disconnect(m_Driver);
-                m_Connection = default(NetworkConnection);
+                OnData(stream);
             }
             else if (cmd == NetworkEvent.Type.Disconnect)
             {
-                Debug.Log("Client got disconnected from server");
-                m_Connection = default(NetworkConnection);
+                OnDisconnect();
             }
         }
     }
 
     private void SpawnPlayers(Player p)
     {
-
+        GameObject temp = Instantiate(cube, p.position, p.rotation);
+        temp.GetComponent<NetworkCharacter>().SetNetworkID(p.id);
+        temp.GetComponent<NetworkCharacter>().SetControllable(p.id == myID);
+        players.Add(p.id, temp);
     }
     private void SpawnPlayers(Player[] p)
     {
         foreach (Player player in p)
         {
-
+            SpawnPlayers(player);
         }
     }
     private void UpdatePlayers(Player[] p)
@@ -188,17 +179,17 @@ public class NetworkClient : MonoBehaviour
 
         }
     }
-    private void DestroyPlayers(Player[] p)
+    private void DestroyPlayers(Player p)
     {
-        foreach (Player player in p)
-        {
-
-        }
+        
     }
 
     private void SendData(object data)
     {
-
+        var writer = m_Driver.BeginSend(m_Connection);
+        NativeArray<byte> sendBytes = new NativeArray<byte>(Encoding.ASCII.GetBytes(JsonUtility.ToJson(data)), Allocator.Temp);
+        writer.WriteBytes(sendBytes);
+        m_Driver.EndSend(writer);
     }
     public void SendInput(Vector3 input)
     {
