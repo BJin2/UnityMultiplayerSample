@@ -53,7 +53,6 @@ public class NetworkServer : MonoBehaviour
     {
         foreach (NetworkConnection connection in m_Connections)
         {
-            int clientIndex = FindMatchingClient(connection.InternalId);
             SendData(new UpdatedPlayer(clients), connection);
         }
     }
@@ -78,9 +77,9 @@ public class NetworkServer : MonoBehaviour
 
         new_player.cmd = Commands.OWN_ID;
         Debug.Log("Sending own id");
-        SendData(new_player, new_client);
+        SendData(new_player, connection);
         Debug.Log("Sending client list to new client");
-        SendData(new ConnectedPlayer(clients), new_client);
+        SendData(new ConnectedPlayer(clients), connection);
 
         clients.Add(new_client);
         players.Add(new GameObject());
@@ -91,10 +90,15 @@ public class NetworkServer : MonoBehaviour
     {
         Debug.Log("Client dropped");
         int clientIndex = FindMatchingClient(m_Connections[connectionIndex].InternalId);
-        SendData(new DisconnectedPlayer(clients[clientIndex]), connectionIndex);
+        DisconnectedPlayer drop = new DisconnectedPlayer(clients[clientIndex]);
         clients.RemoveAt(clientIndex);
         players.RemoveAt(clientIndex);
-        m_Connections.RemoveAtSwapBack(connectionIndex);
+
+        m_Connections[connectionIndex] = default(NetworkConnection);
+        foreach (Client client in clients)
+        {
+            SendData(drop, client);
+        }
     }
 
     private void CleanupClients()
@@ -105,7 +109,14 @@ public class NetworkServer : MonoBehaviour
             if (clients[i].interval >= 5.0f)
             {
                 int connectionIndex = FindMatchingConnection(clients[i].id);
+                if (connectionIndex < 0)
+                {
+                    continue;
+                }
+                Debug.Log("Before : " + m_Connections[connectionIndex].InternalId);
+                m_Connections[connectionIndex].Disconnect(m_Driver);
                 m_Connections[connectionIndex] = default(NetworkConnection);
+                Debug.Log("After : "+m_Connections[connectionIndex].InternalId);
             }
         }
 
@@ -114,6 +125,7 @@ public class NetworkServer : MonoBehaviour
             if (!m_Connections[i].IsCreated)
             {
                 OnDisconnect(i);
+                m_Connections.RemoveAtSwapBack(i);
                 --i;
             }
         }
@@ -152,7 +164,9 @@ public class NetworkServer : MonoBehaviour
 
         // CleanUpConnections
         CleanupClients();
-        
+
+        Debug.Log(m_Connections.Length);
+
         // AcceptNewConnections
         NetworkConnection c;
         while ((c = m_Driver.Accept()) != default(NetworkConnection))
@@ -188,9 +202,18 @@ public class NetworkServer : MonoBehaviour
 
     private void SendData(object data, NetworkConnection c)
     {
-        Debug.Log("SendData through first version");
+        if (c == default(NetworkConnection))
+        {
+            /*/
+            Assert.IsTrue(true);
+            /*/
+            Debug.LogError("Invalid NetworkConnection. Exiting function.");
+            return;
+            //*/
+        }
+        //Debug.Log("SendData through first version");
         var writer = m_Driver.BeginSend(NetworkPipeline.Null, c);
-        Debug.Log("Writer : "+writer);
+        //Debug.Log("WriterLength : "+writer.Length);
         string jsonString = JsonUtility.ToJson(data);
         NativeArray<byte> sendBytes = new NativeArray<byte>(Encoding.ASCII.GetBytes(jsonString), Allocator.Temp);
         writer.WriteBytes(sendBytes);
@@ -198,12 +221,22 @@ public class NetworkServer : MonoBehaviour
     }
     private void SendData(object data, int connectionIndex)
     {
-        Debug.Log("SendData through second version");
+        //Debug.Log("SendData through second version : " + connectionIndex);
+        if (connectionIndex < 0)
+        {
+            /*
+            Assert.IsTrue(true);
+            /*/
+            Debug.LogError("Negative Index. Exiting function.");
+            return;
+            //*/
+        }
+        
         SendData(data, m_Connections[connectionIndex]);
     }
     private void SendData(object data, Client client)
     {
-        Debug.Log("SendData through third version");
+        //Debug.Log("SendData through third version : " + client.id);
         SendData(data, FindMatchingConnection(client.id));
     }
 
