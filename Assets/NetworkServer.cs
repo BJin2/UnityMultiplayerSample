@@ -129,7 +129,7 @@ public class NetworkServer : MonoBehaviour
 
         switch (header.cmd)
         {
-            case Commands.UPDATE:
+            case Commands.INPUT:
             {
                 PlayerInput input = JsonUtility.FromJson<PlayerInput>(returnData);
                 players[clientIndex].transform.Translate(Vector3.forward * Time.deltaTime * input.input.z);

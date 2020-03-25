@@ -9,7 +9,8 @@ namespace NetworkData
         UPDATE,
         CLIENT_DROPPED,
         CLIENT_LIST,
-        OWN_ID
+        OWN_ID,
+        INPUT
     }
 
     [Serializable]
@@ -150,7 +151,7 @@ namespace NetworkData
         public Vector3 input;
         public PlayerInput()
         {
-            cmd = Commands.UPDATE;
+            cmd = Commands.INPUT;
         }
     }
 }

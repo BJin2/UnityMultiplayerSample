@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Collections;
 using Unity.Networking.Transport;
@@ -8,12 +9,14 @@ public class NetworkClient : MonoBehaviour
 {
     public static NetworkClient instance { get; private set; }
 
+    public string IP;
+    public ushort Port;
     public GameObject cube;
 
     public NetworkDriver m_Driver;
     public NetworkConnection m_Connection;
 
-    public bool m_Done;
+    private Dictionary<string, GameObject> players;
 
     private void Awake()
     {
@@ -26,17 +29,35 @@ public class NetworkClient : MonoBehaviour
             Destroy(this);
         }
 
-        m_Driver = new NetworkDriver(new INetworkParameter[0]);
+        m_Driver = NetworkDriver.Create();
         m_Connection = default(NetworkConnection);
-
-        var endpoint = NetworkEndPoint.Parse("3.209.132.25", 12345);
-        // endpoint.Port = 9000;
+        //var endpoint = NetworkEndPoint.Parse("3.209.132.25", 12345);
+        var endpoint = NetworkEndPoint.Parse(IP, Port);
         m_Connection = m_Driver.Connect(endpoint);
+
+        players = new Dictionary<string, GameObject>();
     }
 
     public void OnDestroy()
     {
         m_Driver.Dispose();
+    }
+
+    private void OnConnect()
+    {
+
+    }
+    private void OnData()
+    {
+
+    }
+    private void Disconnect()
+    {
+
+    }
+    private void OnDisconnect()
+    {
+
     }
 
     private void Update()
@@ -174,8 +195,15 @@ public class NetworkClient : MonoBehaviour
 
         }
     }
-    public void SendTransform(Transform t, string id, Vector3 translateInput, Vector3 rotateAxis)
+
+    private void SendData(object data)
     {
 
+    }
+    public void SendInput(Vector3 input)
+    {
+        PlayerInput playerInput = new PlayerInput();
+        playerInput.input = input;
+        SendData(playerInput);
     }
 }

@@ -6,32 +6,34 @@ public class NetworkCharacter : MonoBehaviour
 {
 	private bool controllable = false;
 	private string networkID = "";
-
+	private Vector3 inputVector;
 	private void Start()
 	{
 		if (controllable)
-			InvokeRepeating("UpdateTransform", 1, 0.03f);
+			InvokeRepeating("UpdateInput", 1, 0.016f);
 	}
 	private void Update()
 	{
 		if (!controllable)
 			return;
 
+		inputVector = Vector3.zero;
+
 		if (Input.GetKey(KeyCode.W))
 		{
-			NetworkClient.instance.SendTransform(transform, networkID, new Vector3(0, 0, 1), new Vector3(0, 0, 0));
+			inputVector.z += 1;
 		}
 		if (Input.GetKey(KeyCode.S))
 		{
-			NetworkClient.instance.SendTransform(transform, networkID, new Vector3(0, 0, -1), new Vector3(0, 0, 0));
+			inputVector.z -= 1;
 		}
 		if (Input.GetKey(KeyCode.A))
 		{
-			NetworkClient.instance.SendTransform(transform, networkID, new Vector3(0, 0, 0), new Vector3(0, -1, 0));
+			inputVector.y -= 1;
 		}
 		if (Input.GetKey(KeyCode.D))
 		{
-			NetworkClient.instance.SendTransform(transform, networkID, new Vector3(0, 0, 0), new Vector3(0, 1, 0));
+			inputVector.y += 1;
 		}
 	}
 	public void SetNetworkID(string id)
@@ -42,8 +44,8 @@ public class NetworkCharacter : MonoBehaviour
 	{
 		controllable = control;
 	}
-	public void UpdateTransform()
+	public void UpdateInput()
 	{
-		NetworkClient.instance.SendTransform(transform, networkID, new Vector3(0, 0, 0), new Vector3(0, 0, 0 ));
+		NetworkClient.instance.SendInput(inputVector);
 	}
 }
