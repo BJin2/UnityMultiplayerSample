@@ -13,7 +13,7 @@ namespace NetworkData
     }
 
     [Serializable]
-    public class State
+    public class NetworkHeader
     {
         public Commands cmd;
     }
@@ -32,8 +32,18 @@ namespace NetworkData
         public receivedColor color;
         public Vector3 position;
         public Quaternion rotation;
-        public Vector3 input;
 
+        public Player()
+        {
+            id = "-1";
+        }
+        public Player(Client c)
+        {
+            id = c.id;
+            color = c.color;
+            position = c.position;
+            rotation = c.rotation;
+        }
         public override string ToString()
         {
             string result = "Player : \n";
@@ -43,30 +53,104 @@ namespace NetworkData
             result += "B : " + color.B.ToString() + "\n";
             result += "position : " + position.ToString() + "\n";
             result += "rotation : " + rotation.ToString() + "\n";
-            result += "input : " + input.ToString() + "\n";
 
             return result;
         }
     }
 
-    [Serializable]
-    public class NewPlayer
+    public class Client : Player
     {
-        public Player[] player;
+        public float interval;
+        public void SetPlayer(Player p)
+        {
+            id = p.id;
+            color = p.color;
+
+            position = p.position;
+            rotation = p.rotation;
+        }
+        public override string ToString()
+        {
+            string result = base.ToString();
+            result += "interval : " + interval + "\n";
+            return result;
+        }
+    }
+
+    [Serializable]
+    public class NewPlayer : NetworkHeader
+    {
+        public Player player;
+
+        public NewPlayer()
+        {
+            cmd = Commands.NEW_CLIENT;
+        }
+        public NewPlayer(Client c)
+        {
+            cmd = Commands.NEW_CLIENT;
+            player = new Player(c);
+        }
     }
     [Serializable]
-    public class ConnectedPlayer
+    public class ConnectedPlayer : NetworkHeader
     {
         public Player[] connect;
+
+        public ConnectedPlayer()
+        {
+            cmd = Commands.CLIENT_LIST;
+        }
+        public ConnectedPlayer(System.Collections.Generic.List<Client> clients)
+        {
+            cmd = Commands.CLIENT_LIST;
+            connect = new Player[clients.Count];
+            for (int i = 0; i < clients.Count; i++)
+            {
+                connect[i] = new Player(clients[i]);
+            }
+        }
     }
     [Serializable]
-    public class DisconnectedPlayer
+    public class DisconnectedPlayer : NetworkHeader
     {
-        public Player[] disconnect;
+        public Player disconnect;
+        public DisconnectedPlayer()
+        {
+            cmd = Commands.CLIENT_DROPPED;
+        }
+        public DisconnectedPlayer(Client c)
+        {
+            cmd = Commands.CLIENT_DROPPED;
+            disconnect = new Player(c);
+        }
     }
     [Serializable]
-    public class UpdatedPlayer
+    public class UpdatedPlayer : NetworkHeader
     {
         public Player[] update;
+        public UpdatedPlayer()
+        {
+            cmd = Commands.UPDATE;
+        }
+        public UpdatedPlayer(System.Collections.Generic.List<Client> clients)
+        {
+            cmd = Commands.UPDATE;
+            update = new Player[clients.Count];
+            for (int i = 0; i < clients.Count; i++)
+            {
+                update[i] = new Player(clients[i]);
+            }
+        }
+    }
+
+    [Serializable]
+    public class PlayerInput : NetworkHeader
+    {
+        public Vector3 input;
+        public PlayerInput()
+        {
+            cmd = Commands.UPDATE;
+        }
     }
 }

@@ -10,7 +10,7 @@ public class NetworkClient : MonoBehaviour
 
     public GameObject cube;
 
-    public UdpNetworkDriver m_Driver;
+    public NetworkDriver m_Driver;
     public NetworkConnection m_Connection;
 
     public bool m_Done;
@@ -26,7 +26,7 @@ public class NetworkClient : MonoBehaviour
             Destroy(this);
         }
 
-        m_Driver = new UdpNetworkDriver(new INetworkParameter[0]);
+        m_Driver = new NetworkDriver(new INetworkParameter[0]);
         m_Connection = default(NetworkConnection);
 
         var endpoint = NetworkEndPoint.Parse("3.209.132.25", 12345);
@@ -75,8 +75,19 @@ public class NetworkClient : MonoBehaviour
                 string returnData = Encoding.ASCII.GetString(message);
 
                 Debug.Log("Got this: " + returnData);
-
-                State latestState = JsonUtility.FromJson<State>(returnData);
+                NetworkHeader latestState = new NetworkHeader();
+                try
+                {
+                    latestState = JsonUtility.FromJson<NetworkHeader>(returnData);
+                }
+                catch(System.ArgumentException e)
+                {
+                    Debug.LogError(e.ToString() + "\nLoading failed. Disconnect");
+                    m_Done = true;
+                    m_Connection.Disconnect(m_Driver);
+                    m_Connection = default(NetworkConnection);
+                    return;
+                }
 
                 try
                 {
