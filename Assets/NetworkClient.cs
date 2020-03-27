@@ -74,6 +74,7 @@ public class NetworkClient : MonoBehaviour
                 {
                     Debug.Log("New client");
                     NewPlayer np = JsonUtility.FromJson<NewPlayer>(returnData);
+                    Debug.Log(np.player.ToString());
                     SpawnPlayers(np.player);
                     break;
                 }
@@ -99,9 +100,9 @@ public class NetworkClient : MonoBehaviour
                 }
                 case Commands.OWN_ID:
                 {
-                    Player p = JsonUtility.FromJson<Player>(returnData);
-                    myID = p.id;
-                    SpawnPlayers(p);
+                    NewPlayer p = JsonUtility.FromJson<NewPlayer>(returnData);
+                    myID = p.player.id;
+                    SpawnPlayers(p.player);
                     Debug.Log("Player's own id");
                     break;
                 }
@@ -160,9 +161,16 @@ public class NetworkClient : MonoBehaviour
 
     private void SpawnPlayers(Player p)
     {
+        if (players.ContainsKey(p.id))
+        {
+            Debug.LogError("Player already exists");
+            return;
+        }
+        Debug.Log(p.ToString());
         GameObject temp = Instantiate(cube, p.position, p.rotation);
         temp.GetComponent<NetworkCharacter>().SetNetworkID(p.id);
         temp.GetComponent<NetworkCharacter>().SetControllable(p.id == myID);
+        temp.GetComponent<Renderer>().material.color = new Color(p.color.R, p.color.G, p.color.B, 1.0f);
         players.Add(p.id, temp);
     }
     private void SpawnPlayers(Player[] p)
@@ -176,12 +184,23 @@ public class NetworkClient : MonoBehaviour
     {
         foreach (Player player in p)
         {
-
+            if (players.ContainsKey(player.id))
+            {
+                players[player.id].transform.position = player.position;
+                players[player.id].transform.rotation = player.rotation;
+            }
         }
     }
     private void DestroyPlayers(Player[] p)
     {
-        
+        foreach (Player player in p)
+        {
+            if (players.ContainsKey(player.id))
+            {
+                Destroy(players[player.id]);
+                players.Remove(player.id);
+            }
+        }
     }
 
     private void SendData(object data)

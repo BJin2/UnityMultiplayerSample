@@ -11,6 +11,7 @@ public class NetworkServer : MonoBehaviour
     public static NetworkServer instance { get; private set; }
     public NetworkDriver m_Driver;
     private NativeList<NetworkConnection> m_Connections;
+    private const float INTERVAl = 1.0f / 60.0f;
     private List<Client> clients;
     private List<GameObject> players;
 
@@ -40,7 +41,7 @@ public class NetworkServer : MonoBehaviour
 
     private void Start()
     {
-        InvokeRepeating("UpdateClients", 1, 1.0f / 60.0f);
+        InvokeRepeating("UpdateClients", 1, INTERVAl);
     }
 
     public void OnDestroy()
@@ -60,13 +61,12 @@ public class NetworkServer : MonoBehaviour
     private void OnConnect(NetworkConnection connection)
     {
         Debug.Log("Accepted new connection");
-
+        
         Client new_client = new Client();
         new_client.id = connection.InternalId.ToString();
         new_client.color.R = Random.Range(0.0f, 1.0f);
         new_client.color.G = Random.Range(0.0f, 1.0f);
         new_client.color.B = Random.Range(0.0f, 1.0f);
-        new_client.color.R = Random.Range(0.0f, 1.0f);
 
         NewPlayer new_player = new NewPlayer(new_client);
         foreach (Client client in clients)
@@ -142,8 +142,8 @@ public class NetworkServer : MonoBehaviour
             case Commands.INPUT:
             {
                 PlayerInput input = JsonUtility.FromJson<PlayerInput>(returnData);
-                players[clientIndex].transform.Translate(Vector3.forward * Time.deltaTime * input.input.z);
-                players[clientIndex].transform.Rotate(Vector3.up * input.input.y * Time.deltaTime * 90);
+                players[clientIndex].transform.Translate(Vector3.forward * INTERVAl * input.input.z);
+                players[clientIndex].transform.Rotate(Vector3.up * input.input.y * INTERVAl * 90);
                 clients[clientIndex].position = players[clientIndex].transform.position;
                 clients[clientIndex].rotation = players[clientIndex].transform.rotation;
             }
