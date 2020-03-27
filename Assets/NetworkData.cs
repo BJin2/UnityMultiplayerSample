@@ -115,15 +115,19 @@ namespace NetworkData
     [Serializable]
     public class DisconnectedPlayer : NetworkHeader
     {
-        public Player disconnect;
+        public Player[] disconnect;
         public DisconnectedPlayer()
         {
             cmd = Commands.CLIENT_DROPPED;
         }
-        public DisconnectedPlayer(Client c)
+        public DisconnectedPlayer(System.Collections.Generic.List<Client> clients)
         {
             cmd = Commands.CLIENT_DROPPED;
-            disconnect = new Player(c);
+            disconnect = new Player[clients.Count];
+            for (int i = 0; i < clients.Count; i++)
+            {
+                disconnect[i] = new Player(clients[i]);
+            }
         }
     }
     [Serializable]

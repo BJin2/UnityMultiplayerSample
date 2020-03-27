@@ -86,37 +86,24 @@ public class NetworkServer : MonoBehaviour
         m_Connections.Add(connection);
     }
 
-    private void OnDisconnect(int connectionIndex)
-    {
-        Debug.Log("Client dropped");
-        int clientIndex = FindMatchingClient(m_Connections[connectionIndex].InternalId);
-        DisconnectedPlayer drop = new DisconnectedPlayer(clients[clientIndex]);
-        clients.RemoveAt(clientIndex);
-        players.RemoveAt(clientIndex);
-
-        m_Connections[connectionIndex] = default(NetworkConnection);
-        foreach (Client client in clients)
-        {
-            SendData(drop, client);
-        }
-    }
-
     private void CleanupClients()
     {
+        List<Client> dropped = new List<Client>();
         for (int i = 0; i < clients.Count; i++)
         {
             clients[i].interval += Time.deltaTime;
             if (clients[i].interval >= 5.0f)
             {
                 int connectionIndex = FindMatchingConnection(clients[i].id);
-                if (connectionIndex < 0)
+                if (connectionIndex >= 0)
                 {
-                    continue;
+                    m_Connections[connectionIndex] = default(NetworkConnection);
                 }
-                Debug.Log("Before : " + m_Connections[connectionIndex].InternalId);
-                m_Connections[connectionIndex].Disconnect(m_Driver);
-                m_Connections[connectionIndex] = default(NetworkConnection);
-                Debug.Log("After : "+m_Connections[connectionIndex].InternalId);
+                dropped.Add(clients[i]);
+                Destroy(players[i]);
+                clients.RemoveAt(i);
+                players.RemoveAt(i);
+                i--;
             }
         }
 
@@ -124,9 +111,17 @@ public class NetworkServer : MonoBehaviour
         {
             if (!m_Connections[i].IsCreated)
             {
-                OnDisconnect(i);
                 m_Connections.RemoveAtSwapBack(i);
                 --i;
+            }
+        }
+
+        if (dropped.Count > 0)
+        {
+            DisconnectedPlayer drop = new DisconnectedPlayer(dropped);
+            foreach (Client client in clients)
+            {
+                SendData(drop, client);
             }
         }
     }
@@ -164,8 +159,6 @@ public class NetworkServer : MonoBehaviour
 
         // CleanUpConnections
         CleanupClients();
-
-        Debug.Log(m_Connections.Length);
 
         // AcceptNewConnections
         NetworkConnection c;
@@ -244,7 +237,7 @@ public class NetworkServer : MonoBehaviour
     {
         for (int i = 0; i < m_Connections.Length; i++)
         {
-            if (m_Connections[i].InternalId == id)
+            if ((m_Connections[i].InternalId == id) && m_Connections[i].IsCreated)
                 return i;
         }
         return -1;

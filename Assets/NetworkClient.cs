@@ -179,7 +179,7 @@ public class NetworkClient : MonoBehaviour
 
         }
     }
-    private void DestroyPlayers(Player p)
+    private void DestroyPlayers(Player[] p)
     {
         
     }
